@@ -1,0 +1,81 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
+      RUSTFLAGS: "-Cinstrument-coverage"
+      LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Cache JDK modules extraction
+      uses: actions/cache@v4
+      with:
+        path: |
+          java_modules/
+        key: jimage-extract-${{ runner.os }}-${{ hashFiles('**/lib/modules') }}
+        restore-keys: |
+          jimage-extract-${{ runner.os }}-
+
+    - name: Download OpenJDK 23 and Extract modules
+      run: |
+        mkdir -p java_modules 
+        if [ ! -d "java_modules/java.base" ]; then
+          curl -L -o openjdk.tar.gz https://download.java.net/java/GA/jdk23.0.2/6da2a6609d6e406f85c491fcb119101b/7/GPL/openjdk-23.0.2_linux-x64_bin.tar.gz
+          mkdir openjdk
+          tar -xzf openjdk.tar.gz -C openjdk --strip-components=1
+          echo "JAVA_HOME=$(pwd)/openjdk" >> $GITHUB_ENV
+          echo "$(pwd)/openjdk/bin" >> $GITHUB_PATH
+          $JAVA_HOME/bin/jimage extract --dir java_modules $JAVA_HOME/lib/modules
+        else
+          echo "Using cached modules"
+        fi
+
+    - name: Cache Rust
+      uses: Swatinem/rust-cache@v2
+      with:
+        cache-on-failure: true
+
+    - name: Install Rust stable and grcov
+      run: |
+        rustup install stable
+        rustup default stable
+        rustup component add llvm-tools-preview
+        cargo install grcov
+
+    - name: Run tests with coverage
+      run: |
+        JHOME=java_modules cargo test
+
+    - name: Generate HTML coverage report
+      run: |
+        mkdir -p coverage
+        JHOME=java_modules make coverage
+
+    - name: Upload HTML report artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        name: coverage-report
+        path: ./target/debug/coverage/
+
+  # deploy:
+  #   needs: coverage
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     pages: write
+  #     id-token: write
+  #
+  #   steps:
+  #   - name: Deploy to GitHub Pages
+  #     uses: actions/deploy-pages@v2
+
