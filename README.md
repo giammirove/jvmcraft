@@ -4,11 +4,11 @@ Writing JVM in Rust to play Minecraft.
 Ambitious project to learn rust (trying my best).  
 
 As of today 28/04/2025, this project has been developed as a side project 
-after work in three weeks ==> not the best code. :)  
+after work in three weeks => not the best code. :)  
 
-After a long pause where I search for a job (found it), worked on my master thesis,
+After a long pause where I searched for a job (found it), worked on my master thesis,
 and took care of my mental health (it is important!!!), I finally continued this
-project and implemented socekts ! (10/07/2025)
+project and implemented sockets! (10/07/2025)
 
 This is my first "big" rust project !
 
