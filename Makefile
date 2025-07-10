@@ -15,6 +15,9 @@ test: $(TEST_CLASSES)
 lint:
 	cargo clippy
 
+fmt:
+	cargo +nightly fmt
+
 coverage: $(TEST_CLASSES)
 	rm -rf *.profraw
 	rm -rf ./target/debug/coverage/

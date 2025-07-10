@@ -34,10 +34,16 @@ public class SocketClient {
     String m = "";
 
     // Keep reading until "Over" is input
+    int times = 0;
     while (!m.equals("Over")) {
       try {
+        System.out.println("Type Something:");
         m = in.readLine();
+        System.out.println("Sending " + m);
+        System.out.println("Sending " + m.length());
         out.writeUTF(m);
+        times += 1;
+        System.out.println("=========================");
       } catch (IOException i) {
         System.out.println(i);
       }

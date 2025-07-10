@@ -35,6 +35,7 @@ jobs:
           mkdir openjdk
           tar -xzf openjdk.tar.gz -C openjdk --strip-components=1
           echo "JAVA_HOME=$(pwd)/openjdk" >> $GITHUB_ENV
+          echo "JHOME=$(pwd)/openjdk" >> $GITHUB_ENV
           echo "$(pwd)/openjdk/bin" >> $GITHUB_PATH
           $JAVA_HOME/bin/jimage extract --dir java_modules $JAVA_HOME/lib/modules
         else
@@ -55,12 +56,12 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        JHOME=java_modules cargo test
+        JMODS=java_modules cargo test
 
     - name: Generate HTML coverage report
       run: |
         mkdir -p coverage
-        JHOME=java_modules make coverage
+        JMODS=java_modules make coverage
 
     - name: Upload HTML report artifact
       uses: actions/upload-pages-artifact@v3

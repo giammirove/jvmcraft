@@ -37,6 +37,7 @@ public class SocketServer {
 
         } catch (IOException i) {
           System.out.println(i);
+          break;
         }
       }
       System.out.println("Closing connection");

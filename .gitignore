@@ -1,0 +1,14 @@
+/target
+/jdk
+/trash
+/classes
+*.profraw
+/coverage
+/java
+/samples/*.class
+Cargo.lock
+java_modules
+openjdk-23.0.2
+openjdk
+minecraft
+log
