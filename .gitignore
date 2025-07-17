@@ -6,6 +6,7 @@
 /coverage
 /java
 /samples/*.class
+*.class
 Cargo.lock
 java_modules
 openjdk-23.0.2

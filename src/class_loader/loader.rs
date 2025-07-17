@@ -15,7 +15,7 @@ use crate::{
   class_file,
   class_loader::attributes,
   runtime::{errors, modulemanager::ModuleManager, types},
-  utils::{dotclass_to_class, ju2},
+  utils::{dotclass_to_class, ju2, pause},
 };
 
 #[derive(Debug)]

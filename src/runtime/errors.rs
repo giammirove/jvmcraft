@@ -66,6 +66,9 @@ pub enum JavaException {
 
   #[error["AssertionError"]]
   AssertionError,
+
+  #[error["IllegalArgumentException ({0})"]]
+  IllegalArgumentException(String),
 }
 
 impl JavaException {
@@ -79,24 +82,24 @@ impl JavaException {
       JavaException::FileNotFound(_) => "java/lang/FileNotFoundException",
       JavaException::LinkageError => "java/lang/LinkageError",
       JavaException::AssertionError => "java/lang/AssertionError",
+      JavaException::IllegalArgumentException(_) => "java/lang/IllegalArgumentException",
     }
   }
 
-  pub(crate) fn convert_classname_to_java_exception(classname: &str) -> JavaException {
+  pub(crate) fn convert_classname_to_java_exception(classname: &str, msg: String) -> JavaException {
     match classname {
       "java/lang/NullPointerException" => JavaException::NullPointer,
-      "java/lang/CloneNotSupportedException" => {
-        JavaException::CloneNotSupported("TODO".to_string())
-      }
+      "java/lang/CloneNotSupportedException" => JavaException::CloneNotSupported(msg),
       "java/lang/ArrayIndexOutOfBoundsException" => {
         JavaException::ArrayIndexOutOfBounds(usize::MAX, usize::MAX)
       }
       "java/lang/ArithmeticException" => JavaException::Arithmetic,
-      "java/lang/IOException" => JavaException::IO("TODO".to_string()),
-      "java/lang/FileNotFoundException" => JavaException::FileNotFound("TODO".to_string()),
+      "java/lang/IOException" => JavaException::IO(msg),
+      "java/lang/FileNotFoundException" => JavaException::FileNotFound(msg),
       "java/lang/LinkageError" => JavaException::LinkageError,
       "java/lang/AssertionError" => JavaException::AssertionError,
-      _ => panic!("exception not handled {}", classname),
+      "java/lang/IllegalArgumentException" => JavaException::IllegalArgumentException(msg),
+      _ => panic!("exception not handled {} -> '{}'", classname, msg),
     }
   }
 }

@@ -55,6 +55,7 @@ impl Type {
       Type::Null => 1,
       Type::ArrayRef(_) => 1,
       Type::ObjectRef(_) => 1,
+      Type::None => 0,
       v => panic!("{:?}", v),
     }
   }
@@ -231,8 +232,6 @@ impl Type {
 
   // input are like [B, [Z, [Ljava/lang/String']
   pub fn convert_array_descriptor_to_class_type(descriptor: &str) -> Result<String> {
-    warn!("Multi array not supported");
-
     match descriptor {
       v if Type::is_primitive(v) => Ok(descriptor.to_owned()),
       t if t.starts_with("[L") && t.ends_with(';') => {

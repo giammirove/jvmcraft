@@ -159,6 +159,12 @@ impl JVM {
     args: &mut Vec<types::Type>,
   ) -> Result<types::Type> {
     let member_name_ref = method_handle.get_field("member")?.as_ref()?;
+
+    let method_type_str_ref = self
+      .resolve_member_name_type_descriptor(member_name_ref)?
+      .as_ref()?;
+    let method_type_str = self.heap.get_string(method_type_str_ref)?.clone();
+
     let member_name = self.heap.get_obj_instance(member_name_ref)?;
 
     let method_name_ref = member_name.get_field("name")?.as_ref()?;
@@ -194,13 +200,6 @@ impl JVM {
           args.remove(0);
         }
 
-        let method_type_ref = method_handle.get_field("type")?.as_ref()?;
-        let method_type_str_ref = self
-          .resolve_method_type_descriptor(method_type_ref)?
-          .as_ref()?;
-
-        let method_type_str = self.heap.get_string(method_type_str_ref)?;
-
         // call the method
         let return_value = self.call_and_resolve_method(
           &method_clazz_name,
@@ -208,8 +207,6 @@ impl JVM {
           &method_type_str,
           args.to_vec(),
         )?;
-
-        debug!("invoke exact return value : {}", return_value);
 
         // if new invoke special => return it self
         let ret_value = if JVM::is_method_handle_new_invoke_special(method_flags) {
@@ -231,13 +228,6 @@ impl JVM {
         // replace the first element of `args` with a new object
         args[0] = this_ref;
 
-        let method_type_ref = method_handle.get_field("type")?.as_ref()?;
-        let method_type_str_ref = self
-          .resolve_method_type_descriptor(method_type_ref)?
-          .as_ref()?;
-
-        let method_type_str = self.heap.get_string(method_type_str_ref)?;
-
         // the method type is not the one in the member name
         // since that one contains the return type as Ljava/lang/Object
         // while <init> has no return (V)
@@ -247,14 +237,12 @@ impl JVM {
         let init_method_type_str = format!("({})V", parameters_type_str);
 
         // call the method
-        let return_value = self.call_and_resolve_method(
+        self.call_and_resolve_method(
           &method_clazz_name,
           &method_name,
           &init_method_type_str,
           args.to_vec(),
         )?;
-
-        debug!("invoke exact return value : {}", return_value);
 
         Ok(*args.first().unwrap())
       }
@@ -716,10 +704,16 @@ impl JVM {
 
     let ret_value = self.call_method_handle(method_handle_ref, &mut args)?;
 
-    debug!("invoke exact return value : {}", ret_value);
+    // if the no ret value => send null
+    let new_ret_value = if ret_value == types::Type::None {
+      types::Type::Null
+    } else {
+      ret_value
+    };
 
-    self.push_stack(ret_value)?;
-    Ok(Some(ret_value))
+    debug!("invoke exact return value : {}", new_ret_value);
+    self.push_stack(new_ret_value)?;
+    Ok(Some(new_ret_value))
   }
 
   // TODO: consider different invoke kind

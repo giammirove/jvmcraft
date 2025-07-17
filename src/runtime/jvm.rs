@@ -298,7 +298,7 @@ impl JVM {
 
     // initPhase2
     // TODO: is it needed ?
-    //self.init_phase_2()?;
+    self.init_phase_2()?;
 
     // initPhase3
     // TODO: is it needed ?
@@ -520,7 +520,12 @@ impl JVM {
           .alloc_obj(&mut self.class_loader, exec_classname)?
           .as_ref()?;
         // and handle it
-        self.handle_java_exception(exec_ref, stop_at)
+        let handled = self.handle_java_exception(exec_ref, stop_at)?;
+        if handled.is_none() {
+          Err(err)
+        } else {
+          Ok(handled)
+        }
       }
       _ => {
         warn!("Exception not recognized");
@@ -539,7 +544,8 @@ impl JVM {
           }
         }
         Err(err) => {
-          if self.handle_step_error(err, 0)?.is_none() {
+          if self.handle_step_error(err, 0).is_err() {
+            debug!("Something bad happened");
             break;
           }
         }
@@ -1887,10 +1893,12 @@ impl JVM {
     exec_ref: ju4,
     stop_at: usize,
   ) -> Result<Option<types::Type>> {
+    let class_name = self
+      .heap
+      .get_obj_instance(exec_ref)?
+      .get_classname()
+      .to_string();
     while self.frames.len() >= stop_at {
-      let obj = self.heap.get_obj_instance(exec_ref)?;
-      let class_name = obj.get_classname();
-
       let method_name = self.get_current_frame()?.get_method_name().to_string();
       let method_type = self.get_current_frame()?.get_method_type().to_string();
       let method_class = self.get_current_frame()?.get_classname().to_string();
@@ -1902,7 +1910,7 @@ impl JVM {
 
       if let Some(method_code) = method.get_code() {
         let pc = self.get_current_frame()?.get_pc() as ju2;
-        let check = method_code.check_exception(&mut self.class_loader, pc, class_name)?;
+        let check = method_code.check_exception(&mut self.class_loader, pc, &class_name)?;
         if let Some(handler_pc) = check {
           self.push_stack(types::Type::ObjectRef(exec_ref))?;
           // jump to handler pc
@@ -1922,6 +1930,8 @@ impl JVM {
       self.pop_frame();
     }
 
+    debug!("Exception not handled yet {}", class_name);
+
     // not handled
     Ok(None)
   }
@@ -1930,12 +1940,23 @@ impl JVM {
     warn!("ATHROW NOT IMPLEMENTED YET");
 
     let exec_ref = self.pop_stack()?.as_ref()?;
-    let exec_classname = self.heap.get_obj_instance(exec_ref)?.get_classname();
+    let exec_obj = self.heap.get_obj_instance(exec_ref)?;
+    let exec_classname = exec_obj.get_classname();
+
+    let detail_message_ref = exec_obj.get_field("detailMessage")?.as_ref()?;
+    let detail_message = if detail_message_ref == 0 {
+      "No Message".to_string()
+    } else {
+      self.heap.get_string(detail_message_ref)?
+    };
+    debug!("THROWING {} -> '{}'", exec_classname, detail_message);
+
+    self.show_frames();
 
     // make this propagate until main loop
 
     Err(eyre!(
-      errors::JavaException::convert_classname_to_java_exception(exec_classname)
+      errors::JavaException::convert_classname_to_java_exception(exec_classname, detail_message)
     ))
   }
 
@@ -2277,12 +2298,14 @@ impl JVM {
               returned = v;
             }
           }
-          Err(err) => match self.handle_step_error(err, num_frames) {
-            // can not handle the error => pass the error to the upper handler
-            Err(err) => return Err(err),
-            // can handle the error => continue
-            _ => {}
-          },
+          Err(err) => {
+            match self.handle_step_error(err, num_frames) {
+              // can not handle the error => pass the error to the upper handler
+              Err(err) => return Err(err),
+              // can handle the error => continue
+              _ => {}
+            }
+          }
         }
       }
     }
@@ -2355,11 +2378,17 @@ impl JVM {
       types::Type::ObjectRef(obj_ref) => {
         let obj = self.heap.get_obj_instance(obj_ref).unwrap();
         if obj.is_string() {
-          let str = self.heap.get_string(obj_ref).unwrap();
+          let str = self
+            .heap
+            .get_string(obj_ref)
+            .unwrap_or("null string".to_string());
           error!("\t\t  {} -> String '{}' ({})", local, str, str.len());
         } else if obj.get_classname() == "java/lang/invoke/MemberName" {
           let member_name_name_ref = obj.get_field("name").unwrap().as_ref().unwrap();
-          let member_name_name = self.heap.get_string(member_name_name_ref).unwrap();
+          let member_name_name = self
+            .heap
+            .get_string(member_name_name_ref)
+            .unwrap_or("null string".to_string());
           error!("\t\t  {} -> MemberName {}", local, member_name_name);
         } else if obj.get_classname() == "java/lang/Class" {
           let classname = self.heap.get_classname_from_class_obj(obj_ref).unwrap();
@@ -2377,7 +2406,7 @@ impl JVM {
   pub(crate) fn show_frames(&self) {
     error!("==================================================================");
 
-    error!("Calls");
+    error!("Stack Trace");
 
     for c in &self.frames {
       error!(
@@ -2445,6 +2474,7 @@ impl JVM {
     );
 
     self.frames.push(frame);
+    // self.show_frames();
 
     Ok(())
   }

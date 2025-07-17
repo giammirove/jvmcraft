@@ -68,8 +68,6 @@ fn main() -> Result<()> {
   let mut jvm = runtime::jvm::JVM::build(&args.user_module, vec![])?;
   jvm.set_logging_handle(handle);
 
-  // example:  jvm.push_frame_from_class("SocketClient", "main", "([Ljava/lang/String;)V",
-  // vec![])?;
   jvm.push_frame_from_class(
     &args.class_name,
     &args.method_name,

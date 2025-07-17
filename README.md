@@ -60,7 +60,8 @@ tar -xzf openjdk.tar.gz -C openjdk --strip-components=1
 
 Run it:
 ```bash
-JMODS=/path/to/java_modules cargo run -- -u samples -c Print -m main -d "()V"
+javac samples/print/Print.java
+JMODS=/path/to/java_modules cargo run -- -u samples -c print.Print -m main -d "()V"
 ```
 where `JMODS` is the folder with the java modules just downloaded.
 
